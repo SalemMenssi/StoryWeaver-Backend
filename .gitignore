@@ -1,0 +1,3 @@
+# Ignore only node_modules in server
+node_modules/
+CLAUDE.md

@@ -1,12 +1,12 @@
 require("dotenv").config();
 const path = require("path");
-const express     = require("express");
-const cors        = require("cors");
-const helmet      = require("helmet");
-const morgan      = require("morgan");
-const cookieParser= require("cookie-parser");
-const rateLimit   = require("express-rate-limit");
-const connectDB   = require("./Config/DBconfig");
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const cookieParser = require("cookie-parser");
+const rateLimit = require("express-rate-limit");
+const connectDB = require("./Config/DBconfig");
 
 const app = express();
 
@@ -20,9 +20,9 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(cors({ 
-  origin: true, 
-  credentials: true 
+app.use(cors({
+  origin: true,
+  credentials: true
 }));
 
 const limiter = rateLimit({
@@ -33,17 +33,15 @@ const limiter = rateLimit({
 app.use("/api", limiter);
 
 // ── Routes ────────────────────────────────────────────────────────
-app.use("/api/auth",      require("./Routes/auth.routes"));
-app.use("/api/users",     require("./Routes/user.routes"));
-app.use("/api/projects",  require("./Routes/project.routes"));
-app.use("/api/scenes",    require("./Routes/scene.routes"));
-app.use("/api/choices",   require("./Routes/choice.routes"));
-app.use("/api/tickets",   require("./Routes/ticket.routes"));
+app.use("/api/auth", require("./Routes/auth.routes"));
+app.use("/api/users", require("./Routes/user.routes"));
+app.use("/api/projects", require("./Routes/project.routes"));
+app.use("/api/scenes", require("./Routes/scene.routes"));
+app.use("/api/choices", require("./Routes/choice.routes"));
+app.use("/api/tickets", require("./Routes/ticket.routes"));
 app.use("/api/variables", require("./Routes/variable.routes"));
 app.use("/api/ai",        require("./Routes/ai.routes"));
 app.use("/api/chapters",  require("./Routes/chapter.routes"));
-app.use("/api/admin",     require("./Routes/admin.routes"));
-app.use("/api/notifications", require("./Routes/notification.routes"));
 
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

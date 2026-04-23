@@ -2,6 +2,7 @@ const Project  = require("../Model/Project.model");
 const Scene    = require("../Model/Scene.model");
 const Choice   = require("../Model/Choice.model");
 const Variable = require("../Model/Variable.model");
+const { syncChapters } = require("./chapter.controller");
 const { successResponse, errorResponse } = require("../Utils/apiResponse");
 
 // ── ADMIN ─────────────────────────────────────────────────────────
@@ -107,11 +108,26 @@ const getProjectById = async (req, res) => {
 
 const createProject = async (req, res) => {
   try {
-    const { name, description, genre, status, image } = req.body;
+    const { name, description, genre, status, image, nodes, edges, gameType, characters, chapters } = req.body;
+    
+    // Initial sync to get statistics
+    let stats = { nodeCount: 0, sceneCount: 0, choiceCount: 0 };
+    if (nodes && nodes.length > 0) {
+      stats = await syncChapters(null, nodes, edges || [], chapters || []);
+    }
+
     const project = await Project.create({
       name, description, genre, status, image,
+      nodes, edges, gameType, characters, chapters,
+      ...stats,
       owner: req.user._id,
     });
+
+    // Re-sync with actual project ID to populate Chapter collection
+    if (nodes && nodes.length > 0) {
+      await syncChapters(project._id, nodes, edges || [], chapters || []);
+    }
+
     return successResponse(res, "Project created!", { project }, 201);
   } catch (err) {
     return errorResponse(res, err.message, 500);
@@ -120,9 +136,15 @@ const createProject = async (req, res) => {
 
 const updateProject = async (req, res) => {
   try {
-    const allowed = ["name", "description", "genre", "status", "image", "resources"];
+    const allowed = ["name", "description", "genre", "status", "image", "resources", "nodes", "edges", "gameType", "characters", "chapters"];
     const updates = {};
     allowed.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+
+    // Sync Chapters first to get updated statistics
+    if (req.body.nodes) {
+      const stats = await syncChapters(req.params.id, req.body.nodes, req.body.edges || [], req.body.chapters || []);
+      Object.assign(updates, stats);
+    }
 
     const project = await Project.findOneAndUpdate(
       { _id: req.params.id, owner: req.user._id },
@@ -130,6 +152,7 @@ const updateProject = async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!project) return errorResponse(res, "Project not found.", 404);
+
     return successResponse(res, "Project updated.", { project });
   } catch (err) {
     return errorResponse(res, err.message, 500);

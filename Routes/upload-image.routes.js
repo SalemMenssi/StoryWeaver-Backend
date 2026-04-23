@@ -68,11 +68,14 @@ const upload = multer({
 // ─────────────────────────────────────────────────────────────────
 
 // POST /api/upload/avatar — upload photo de profil
-router.post("/avatar", protect, upload.single("avatar"), (req, res) => {
+router.post("/avatar", protect, upload.single("avatar"), async (req, res) => {
   try {
     if (!req.file) return errorResponse(res, "No file uploaded.", 400);
 
     const imageUrl = `${req.protocol}://${req.get("host")}/uploads/avatars/${req.file.filename}`;
+
+    const UserModal = require("../Model/User.modal");
+    await UserModal.findByIdAndUpdate(req.user._id, { avatar: imageUrl });
 
     return successResponse(res, "Avatar uploaded successfully.", { imageUrl });
   } catch (err) {

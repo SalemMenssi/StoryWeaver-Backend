@@ -33,6 +33,8 @@ const userSchema = new mongoose.Schema({
     default: "Free",
   },
   lastActivity: { type: Date, default: Date.now },
+  otpCode: { type: String, default: null },
+  otpExpires: { type: Date, default: null },
 }, { timestamps: true });
 
 // Hash password before save

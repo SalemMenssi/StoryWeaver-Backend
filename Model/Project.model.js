@@ -21,6 +21,21 @@ const projectSchema = new mongoose.Schema({
   },
   image: { type: String, default: "" },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  
+  // Graph Persistence
+  nodes:      { type: Array, default: [] },
+  edges:      { type: Array, default: [] },
+  gameType:   { type: String, default: "Linear" },
+  characters: { type: Array, default: [] },
+
+  // Chapters (sidebar navigation items)
+  chapters: [{
+    id:      { type: String, required: true },
+    title:   { type: String, default: "Untitled Chapter" },
+    summary: { type: String, default: "" },
+    color:   { type: String, default: "#6366f1" },
+  }],
+
   nodeCount:  { type: Number, default: 0 },
   sceneCount: { type: Number, default: 0 },
   choiceCount:{ type: Number, default: 0 },

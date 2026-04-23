@@ -2,6 +2,9 @@ const jwt  = require("jsonwebtoken");
 const User = require("../Model/User.modal");
 const { sendTokens, generateAccessToken } = require("../Utils/generateTokens");
 const { successResponse, errorResponse }  = require("../Utils/apiResponse");
+const { sendOTPEmail } = require("../Utils/email.utils");
+
+
 
 const register = async (req, res) => {
   try {
@@ -76,4 +79,61 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { register, login, refresh, logout, getMe };
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return errorResponse(res, "User not found.", 404);
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otpCode = otp;
+    user.otpExpires = Date.now() + 10 * 60 * 1000;
+    await user.save({ validateBeforeSave: false });
+
+    await sendOTPEmail(email, otp);
+    return successResponse(res, "Verification code sent to your email.");
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ 
+      email, 
+      otpCode: otp, 
+      otpExpires: { $gt: Date.now() } 
+    });
+
+    if (!user) return errorResponse(res, "Invalid or expired code.", 400);
+
+    return successResponse(res, "Code verified.");
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, password } = req.body;
+    const user = await User.findOne({ 
+      email, 
+      otpCode: otp, 
+      otpExpires: { $gt: Date.now() } 
+    });
+
+    if (!user) return errorResponse(res, "Invalid or expired session.", 400);
+
+    user.password = password;
+    user.otpCode = null;
+    user.otpExpires = null;
+    await user.save();
+
+    return successResponse(res, "Password reset successfully.");
+  } catch (err) {
+    return errorResponse(res, err.message, 500);
+  }
+};
+
+module.exports = { register, login, refresh, logout, getMe, forgotPassword, verifyOTP, resetPassword };

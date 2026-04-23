@@ -12,7 +12,9 @@ const app = express();
 
 connectDB();
 
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 app.use(morgan("dev"));
 app.use(cookieParser());
 app.use(express.json());
@@ -39,6 +41,7 @@ app.use("/api/choices",   require("./Routes/choice.routes"));
 app.use("/api/tickets",   require("./Routes/ticket.routes"));
 app.use("/api/variables", require("./Routes/variable.routes"));
 app.use("/api/ai",        require("./Routes/ai.routes"));
+app.use("/api/chapters",  require("./Routes/chapter.routes"));
 
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

@@ -1,5 +1,6 @@
 const Ticket = require("../Model/Ticket.model");
 const User   = require("../Model/User.modal");
+const Notification = require("../Model/Notification.model");
 const { successResponse, errorResponse } = require("../Utils/apiResponse");
 
 // ── ADMIN/MODERATOR ───────────────────────────────────────────────
@@ -78,6 +79,15 @@ const replyToTicket = async (req, res) => {
     ticket.messages.push({ sender: "agent", text, senderRef: req.user._id });
     if (ticket.status === "Open") ticket.status = "In Progress";
     await ticket.save();
+
+    // Notify User
+    await Notification.create({
+      recipient: ticket.owner,
+      sender: req.user._id,
+      type: "MESSAGE",
+      content: `${req.user.name}: ${text.substring(0, 50)}${text.length > 50 ? "..." : ""}`,
+      data: { ticketId: ticket._id, type: "TICKET" }
+    });
 
     return successResponse(res, "Reply sent.", { ticket });
   } catch (err) {
@@ -163,6 +173,27 @@ const sendMessage = async (req, res) => {
     ticket.messages.push({ sender: "user", text, senderRef: req.user._id });
     await ticket.save();
 
+    // Notify Admin (Assigned agent or all admins if not assigned)
+    const recipient = ticket.assignedTo || null;
+    if (recipient || !recipient) { // Fallback to first admin if needed
+      let finalRecipient = recipient;
+      if (!finalRecipient) {
+        const Admin = require("../Model/User.modal");
+        const firstAdmin = await Admin.findOne({ role: "admin" });
+        if (firstAdmin) finalRecipient = firstAdmin._id;
+      }
+      
+      if (finalRecipient) {
+        await Notification.create({
+          recipient: finalRecipient,
+          sender: req.user._id,
+          type: "MESSAGE",
+          content: `${req.user.name}: ${text.substring(0, 50)}${text.length > 50 ? "..." : ""}`,
+          data: { ticketId: ticket._id, type: "TICKET" }
+        });
+      }
+    }
+
     return successResponse(res, "Message sent.", { ticket });
   } catch (err) {
     return errorResponse(res, err.message, 500);
@@ -234,6 +265,28 @@ const sendDirectMessage = async (req, res) => {
     ticket.messages.push({ sender: senderType, text, senderRef: req.user._id });
     ticket.status = "In Progress";
     await ticket.save();
+
+    // Create Notification for the receiver
+    const isAgent = (req.user.role === "admin" || req.user.role === "moderator");
+    const recipientId = isAgent ? (req.params.userId || ticket.owner) : (ticket.assignedTo || null);
+
+    // If a user sends a message and no one is assigned, notify a default admin or search for admins
+    let finalRecipient = recipientId;
+    if (!isAgent && !finalRecipient) {
+      const Admin = require("../Model/User.modal");
+      const firstAdmin = await Admin.findOne({ role: "admin" });
+      if (firstAdmin) finalRecipient = firstAdmin._id;
+    }
+
+    if (finalRecipient) {
+      await Notification.create({
+        recipient: finalRecipient,
+        sender: req.user._id,
+        type: "MESSAGE",
+        content: `${req.user.name}: ${text.substring(0, 50)}${text.length > 50 ? "..." : ""}`,
+        data: { ticketId: ticket._id, type: "DIRECT" }
+      });
+    }
 
     await ticket.populate("owner", "name avatar");
     await ticket.populate("messages.senderRef", "name avatar");

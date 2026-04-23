@@ -3,6 +3,111 @@ const User = require("../Model/User.modal");
 const { sendTokens, generateAccessToken } = require("../Utils/generateTokens");
 const { successResponse, errorResponse }  = require("../Utils/apiResponse");
 const { sendOTPEmail } = require("../Utils/email.utils");
+const { OAuth2Client } = require("google-auth-library");
+const axios = require("axios");
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const githubLogin = async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    // 1. Exchange code for access token
+    const tokenRes = await axios.post("https://github.com/login/oauth/access_token", {
+      client_id:     process.env.GITHUB_CLIENT_ID,
+      client_secret: process.env.GITHUB_CLIENT_SECRET,
+      code
+    }, {
+      headers: { Accept: "application/json" }
+    });
+
+    const accessToken = tokenRes.data.access_token;
+    if (!accessToken) return errorResponse(res, "GitHub token exchange failed.", 401);
+
+    // 2. Fetch user profile
+    const userRes = await axios.get("https://api.github.com/user", {
+      headers: { Authorization: `token ${accessToken}` }
+    });
+    const { login, email, avatar_url, id: githubId } = userRes.data;
+
+    // Use login as name if name is missing
+    const name = userRes.data.name || login;
+
+    // GitHub doesn't always return the email if it's private. 
+    // We might need to fetch emails specifically if email is null.
+    let userEmail = email;
+    if (!userEmail) {
+      const emailsRes = await axios.get("https://api.github.com/user/emails", {
+        headers: { Authorization: `token ${accessToken}` }
+      });
+      userEmail = emailsRes.data.find(e => e.primary && e.verified)?.email || emailsRes.data[0].email;
+    }
+
+    let user = await User.findOne({ email: userEmail });
+
+    if (user) {
+      if (!user.githubId) {
+        user.githubId = githubId;
+        user.avatar = user.avatar || avatar_url;
+        await user.save({ validateBeforeSave: false });
+      }
+    } else {
+      user = await User.create({
+        name,
+        email: userEmail,
+        githubId,
+        avatar: avatar_url,
+        password: Math.random().toString(36).slice(-10),
+        status: "Active"
+      });
+    }
+
+    user.lastActivity = Date.now();
+    await user.save({ validateBeforeSave: false });
+
+    return sendTokens(res, user, 200, "GitHub login successful!");
+  } catch (err) {
+    return errorResponse(res, "GitHub authentication failed: " + err.message, 401);
+  }
+};
+
+const googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const { email, name, picture, sub: googleId } = ticket.getPayload();
+
+    let user = await User.findOne({ email });
+
+    if (user) {
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.avatar = user.avatar || picture;
+        await user.save({ validateBeforeSave: false });
+      }
+    } else {
+      // Create new user if doesn't exist
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        avatar: picture,
+        password: Math.random().toString(36).slice(-10), // Random password for social accounts
+        status: "Active"
+      });
+    }
+
+    user.lastActivity = Date.now();
+    await user.save({ validateBeforeSave: false });
+
+    return sendTokens(res, user, 200, "Google login successful!");
+  } catch (err) {
+    return errorResponse(res, "Google authentication failed: " + err.message, 401);
+  }
+};
 
 
 
@@ -136,4 +241,4 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { register, login, refresh, logout, getMe, forgotPassword, verifyOTP, resetPassword };
+module.exports = { register, login, refresh, logout, getMe, forgotPassword, verifyOTP, resetPassword, googleLogin, githubLogin };

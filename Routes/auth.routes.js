@@ -23,6 +23,8 @@ router.post("/login",
 
 router.post("/refresh", refresh);
 router.post("/logout",  logout);
+router.post("/google",  require("../Controllers/auth.controller").googleLogin);
+router.post("/github",  require("../Controllers/auth.controller").githubLogin);
 router.get("/me",       protect, getMe);
 router.post("/forgot-password",
   [body("email").isEmail().withMessage("Valid email required")],

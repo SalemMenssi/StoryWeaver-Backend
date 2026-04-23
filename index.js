@@ -27,7 +27,7 @@ app.use(cors({
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000,
   message: { success: false, message: "Too many requests." },
 });
 app.use("/api", limiter);
@@ -42,6 +42,8 @@ app.use("/api/tickets",   require("./Routes/ticket.routes"));
 app.use("/api/variables", require("./Routes/variable.routes"));
 app.use("/api/ai",        require("./Routes/ai.routes"));
 app.use("/api/chapters",  require("./Routes/chapter.routes"));
+app.use("/api/admin",     require("./Routes/admin.routes"));
+app.use("/api/notifications", require("./Routes/notification.routes"));
 
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

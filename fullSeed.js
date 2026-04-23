@@ -49,7 +49,17 @@ const fullSeed = async () => {
       avatar: "https://api.dicebear.com/7.x/pixel-art/svg?seed=User"
     });
 
-    console.log("✅ Users created: \n - admin@storyweaver.com \n - user@storyweaver.com");
+    const users = [
+      { name: "Alice Johnson", email: "alice@example.com", role: "user", plan: "Free", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alice" },
+      { name: "Bob Smith", email: "bob@example.com", role: "user", plan: "Pro Annual", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob" },
+      { name: "Charlie Davis", email: "charlie@example.com", role: "moderator", plan: "Enterprise", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie" },
+      { name: "Diana Prince", email: "diana@example.com", role: "user", plan: "Pro Monthly", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Diana" },
+      { name: "Ethan Hunt", email: "ethan@example.com", role: "user", plan: "Free", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ethan" },
+    ];
+
+    await User.insertMany(users.map(u => ({ ...u, password: "userpassword123!" })));
+
+    console.log("✅ Users created: \n - admin@storyweaver.com \n - user@storyweaver.com \n - and 5 others.");
 
     // 2. Define Starter Project Data
     const characters = [

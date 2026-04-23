@@ -42,11 +42,11 @@ const getUserById = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    const { name, email, password, role, plan } = req.body;
+    const { name, email, password, role, plan, avatar } = req.body;
     if (await User.findOne({ email }))
       return errorResponse(res, "Email already in use.", 409);
 
-    const user = await User.create({ name, email, password, role, plan });
+    const user = await User.create({ name, email, password, role, plan, avatar });
     return successResponse(res, "User created.", { user }, 201);
   } catch (err) {
     return errorResponse(res, err.message, 500);

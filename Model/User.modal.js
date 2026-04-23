@@ -27,6 +27,8 @@ const userSchema = new mongoose.Schema({
   },
   avatar: { type: String, default: "" },
   bio: { type: String, default: "", maxlength: 300 },
+  googleId: { type: String, default: null },
+  githubId: { type: String, default: null },
   plan: {
     type: String,
     enum: ["Free", "Pro Monthly", "Pro Annual", "Enterprise"],
